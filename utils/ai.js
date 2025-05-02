@@ -8,11 +8,11 @@ require("dotenv").config();
 const readFileAsync = util.promisify(fs.readFile);
 const historiqueMessages = new Map(); // Utilisation d'un Map pour stocker l'historique des messages par canal
 
-const DEVELOPER_ID = process.env.DEVELOPER_ID; /
-const MOKA_ID = process.env.MOKA_ID; 
-const REGLEMENT_CHANNEL_ID = process.env.REGLEMENT_CHANNEL_ID; 
-const PARTENARIAT_CHANNEL_ID = process.env.PARTENARIAT_CHANNEL_ID; 
-const TICKET_CHANNEL_ID = process.env.TICKET_CHANNEL_ID; 
+const DEVELOPER_ID = process.env.DEVELOPER_ID;
+const MOKA_ID = process.env.MOKA_ID;
+const REGLEMENT_CHANNEL_ID = process.env.REGLEMENT_CHANNEL_ID;
+const PARTENARIAT_CHANNEL_ID = process.env.PARTENARIAT_CHANNEL_ID;
+const TICKET_CHANNEL_ID = process.env.TICKET_CHANNEL_ID;
 
 module.exports = (client) => {
   client.on("messageCreate", async (message) => {

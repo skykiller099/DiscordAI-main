@@ -7,14 +7,17 @@ const gemini = require("../models/gemini");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("ajouter-canal-ia") // Nom modifié pour refléter l'ajout
+    .setName("set-ia") // Nom modifié pour refléter l'ajout
     .setDescription("Permet d'ajouter un canal où l'IA répondra.")
-    .addChannelOption((option) =>
-      option
-        .setName("canal")
-        .setDescription("Canal du Chat IA à ajouter")
-        .setRequired(true)
-        .addChannelTypes(ChannelType.GuildText)
+    .addChannelOption(
+      (option) =>
+        option
+          .setName("canal")
+          .setDescription(
+            "Canal du Chat IA à ajouter (facultatif, utilise le canal actuel si non spécifié)"
+          )
+          .addChannelTypes(ChannelType.GuildText)
+          .setRequired(false) // Définit l'option comme facultative
     ),
   async execute(interaction) {
     if (
@@ -28,7 +31,12 @@ module.exports = {
       });
     }
 
-    const channel = interaction.options.getChannel("canal");
+    let channelToAdd = interaction.options.getChannel("canal");
+
+    // Si l'option 'canal' n'est pas fournie, utilise le canal actuel
+    if (!channelToAdd) {
+      channelToAdd = interaction.channel;
+    }
 
     try {
       let data = await gemini.findOne({ GuildId: interaction.guild.id });
@@ -37,24 +45,24 @@ module.exports = {
         // Si aucune configuration n'existe, on crée une nouvelle avec le premier canal
         data = await gemini.create({
           GuildId: interaction.guild.id,
-          ChannelIds: [channel.id], // Initialise ChannelIds avec un tableau contenant l'ID du canal
+          ChannelIds: [channelToAdd.id], // Initialise ChannelIds avec un tableau contenant l'ID du canal
         });
         return interaction.reply({
-          content: `Le canal ${channel} a été ajouté comme étant autorisé pour l'IA.`,
+          content: `Le canal ${channelToAdd} a été ajouté comme étant autorisé pour l'IA.`,
           ephemeral: true,
         });
       } else {
         // Si une configuration existe, on ajoute l'ID du canal au tableau (si ce n'est pas déjà le cas)
-        if (!data.ChannelIds.includes(channel.id)) {
-          data.ChannelIds.push(channel.id);
+        if (!data.ChannelIds.includes(channelToAdd.id)) {
+          data.ChannelIds.push(channelToAdd.id);
           await data.save();
           return interaction.reply({
-            content: `Le canal ${channel} a été ajouté à la liste des canaux autorisés pour l'IA.`,
+            content: `Le canal ${channelToAdd} a été ajouté à la liste des canaux autorisés pour l'IA.`,
             ephemeral: true,
           });
         } else {
           return interaction.reply({
-            content: `Le canal ${channel} est déjà configuré pour l'IA.`,
+            content: `Le canal ${channelToAdd} est déjà configuré pour l'IA.`,
             ephemeral: true,
           });
         }

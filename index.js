@@ -10,74 +10,86 @@ const { connectDB } = require("./utils/db");
 const fs = require("fs");
 const path = require("path");
 
+console.log("Début du script index.js"); // Ajout de log au début
+
 const client = new Client({
   intents: [
-    GatewayIntentBits.Guilds, // Intention pour accéder aux informations des serveurs
-    GatewayIntentBits.GuildMessages, // Intention pour accéder aux messages des serveurs
-    GatewayIntentBits.MessageContent, // Intention pour accéder au contenu des messages (nécessaire pour certains événements)
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
   ],
 });
 
-client.commands = new Collection(); // Collection pour stocker les commandes
-const commands = []; // Tableau pour stocker les données des commandes pour l'API
-const commandsPath = path.join(__dirname, "commands"); // Chemin vers le dossier des commandes
+client.commands = new Collection();
+const commands = [];
+const commandsPath = path.join(__dirname, "commands");
 const commandFiles = fs
-  .readdirSync(commandsPath) // Lit le contenu du dossier des commandes
-  .filter((file) => file.endsWith(".js")); // Filtre pour ne garder que les fichiers JavaScript
+  .readdirSync(commandsPath)
+  .filter((file) => file.endsWith(".js"));
 
+console.log("Lecture des fichiers de commandes..."); // Ajout de log
 for (const file of commandFiles) {
-  const command = require(`./commands/${file}`); // Importe la commande depuis le fichier
-  client.commands.set(command.data.name, command); // Ajoute la commande à la collection avec son nom
-  commands.push(command.data.toJSON()); // Enregistre les commandes pour l'API
+  const command = require(`./commands/${file}`);
+  client.commands.set(command.data.name, command);
+  commands.push(command.data.toJSON());
+  console.log(`Commande chargée : ${file}`); // Log de chaque commande chargée
 }
+console.log("Lecture des fichiers de commandes terminée."); // Ajout de log
 
 client.once("ready", async () => {
   console.log(`Connecté en tant que ${client.user.tag} !`);
-  connectDB(); // Se connecte à la base de données
+  console.log("Tentative d'exécution de clientStatus..."); // Ajout de log avant clientStatus
+  try {
+    const updateClientStatus = require("./events/clientStatus");
+    await updateClientStatus(client);
+    console.log("Status du bot mis à jour avec succès (boucle démarrée).");
+  } catch (error) {
+    console.error("Erreur lors du démarrage de la boucle de statut :", error);
+  }
 
-  // Enregistrer les commandes
+  console.log("Tentative de connexion à la base de données..."); // Ajout de log avant connectDB
+  try {
+    await connectDB();
+    console.log("Connecté à la base de données MongoDB");
+  } catch (error) {
+    console.error("Erreur lors de la connexion à la base de données :", error);
+  }
+
   const rest = new REST({ version: "10" }).setToken(process.env.DISCORD_TOKEN);
 
+  console.log("Tentative d'enregistrement des commandes..."); // Ajout de log avant enregistrement
   try {
-    const clientStatus = require("./events/clientStatus");
-    if (clientStatus.execute) await clientStatus.execute(client);
-    console.log("Status du bot mis à jour avec succès.");
-
-    console.log("Enregistrement des commandes...");
-    // Pour les commandes globales :
-    await rest.put(Routes.applicationCommands(client.user.id), {
+    const guildId = "1240684136163967081";
+    await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), {
       body: commands,
     });
-
-    // Si vous préférez enregistrer les commandes uniquement sur un serveur spécifique, utilisez ce code :
-    // const guildId = 'VOTRE_ID_DE_SERVEUR';   // Remplacez par l'ID de votre serveur
-    // await rest.put(Routes.applicationGuildCommands(client.user.id, guildId), { body: commands });
-
     console.log("Commandes enregistrées avec succès.");
   } catch (error) {
-    console.error(error);
+    console.error("Erreur lors de l'enregistrement des commandes :", error);
   }
 });
 
 client.on("interactionCreate", async (interaction) => {
-  if (!interaction.isCommand()) return; // Ignore les interactions qui ne sont pas des commandes
+  if (!interaction.isCommand()) return;
 
-  const command = client.commands.get(interaction.commandName); // Récupère la commande par son nom
+  const command = client.commands.get(interaction.commandName);
 
-  if (!command) return; // Si la commande n'existe pas, on ne fait rien
+  if (!command) return;
 
   try {
-    await command.execute(interaction); // Exécute la commande
+    await command.execute(interaction);
   } catch (error) {
-    console.error(error);
+    console.error("Erreur lors de l'exécution de la commande :", error);
     await interaction.reply({
       content:
         "Une erreur est survenue lors de l'exécution de cette commande !",
-      ephemeral: true, // La réponse n'est visible que par l'utilisateur
+      ephemeral: true,
     });
   }
 });
 
-require("./utils/ai")(client); // Charge le module d'IA
+require("./utils/ai")(client);
 
-client.login(process.env.DISCORD_TOKEN); // Se connecte à Discord avec le token
+client.login(process.env.DISCORD_TOKEN);
+
+console.log("Fin du script index.js (avant la connexion)"); // Ajout de log à la fin

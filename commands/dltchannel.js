@@ -7,14 +7,18 @@ const gemini = require("../models/gemini");
 
 module.exports = {
   data: new SlashCommandBuilder()
-    .setName("supprimer-canal-ia") // Nom modifié pour être plus explicite
-    .setDescription("Permet de supprimer un canal de la liste où l'IA répond."),
-  addChannelOption: (option) =>
-    option
-      .setName("canal")
-      .setDescription("Canal IA à supprimer")
-      .setRequired(true)
-      .addChannelTypes(ChannelType.GuildText),
+    .setName("dlt-ia") // Nom modifié pour être plus explicite
+    .setDescription("Permet de supprimer un canal de la liste où l'IA répond.")
+    .addChannelOption(
+      (option) =>
+        option
+          .setName("canal")
+          .setDescription(
+            "Canal IA à supprimer (facultatif, utilise le canal actuel si non spécifié)"
+          )
+          .addChannelTypes(ChannelType.GuildText)
+          .setRequired(false) // Définit l'option comme facultative
+    ),
   async execute(interaction) {
     if (
       !interaction.member.permissions.has(
@@ -27,7 +31,12 @@ module.exports = {
       });
     }
 
-    const channelToRemove = interaction.options.getChannel("canal");
+    let channelToRemove = interaction.options.getChannel("canal");
+
+    // Si l'option 'canal' n'est pas fournie, utilise le canal actuel
+    if (!channelToRemove) {
+      channelToRemove = interaction.channel;
+    }
 
     try {
       const data = await gemini.findOne({ GuildId: interaction.guild.id });
